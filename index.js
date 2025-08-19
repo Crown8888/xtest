@@ -926,26 +926,6 @@
         if (source === 'turnstile-capture' && token) {
             setTurnstileToken(token);
 
-            (async () => {
-                try {
-                    const response = await fetch(HARDCODED_BLOB_URL, {
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json' }
-                    });
-                    if (response.ok) {
-                        const savedData = await response.json();
-                        Utils.restoreProgress(savedData);
-                        Utils.restoreOverlayFromData();
-                        Utils.showAlert("✅ Progress loaded from hardcoded link", "success");
-                        updateStats();
-                    } else {
-                        console.error("Failed to fetch hardcoded blob:", response.statusText);
-                    }
-                } catch (e) {
-                    console.error("Error loading from hardcoded blob:", e);
-                }
-            })();
-
             if (document.querySelector("#statusText")?.textContent.includes("CAPTCHA")) {
                 Utils.showAlert("Token captured successfully! You can start the bot now.", "success");
                 updateUI("colorsFound", "success", { count: state.availableColors.length });
