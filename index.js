@@ -4481,6 +4481,8 @@
                     await Utils.restoreOverlayFromData();
                     if (typeof updateStats === 'function') updateStats();
                     if (typeof updateDataButtons === 'function') updateDataButtons();
+
+                    startBtn.disabled = false;
                 }
             } else {
                 console.error('Failed to fetch progress:', response.statusText);
