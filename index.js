@@ -4466,6 +4466,41 @@
         }
 
         loadBotSettings();
+
+        try {
+            const blobUrl = HARDCODED_BLOB_URL;
+            const response = await fetch(blobUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.ok) {
+                const savedData = await response.json();
+                const success = Utils.restoreProgress(savedData);
+                if (success) {
+                    // Update overlay from restored data, refresh stats/buttons if needed
+                    await Utils.restoreOverlayFromData();
+                    if (typeof updateStats === 'function') updateStats();
+                    if (typeof updateDataButtons === 'function') updateDataButtons();
+                    
+                    if (
+                        state.imageLoaded &&
+                        state.startPosition &&
+                        state.region
+                    ) {
+                        const startBtn = document.getElementById('startPaintingBtn');
+                        if (startBtn) {
+                            startBtn.disabled = false;
+                            startBtn.classList.remove('disabled');
+                            startBtn.classList.add('active');
+                        }
+                    }
+                }
+            } else {
+                console.error('Failed to fetch progress:', response.statusText);
+            }
+        } catch(e) {
+            console.error('Error loading progress from JSONBlob:', e);
+        }
     }
 
     async function processImage() {
