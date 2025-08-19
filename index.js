@@ -1343,6 +1343,101 @@
             }
         },
 
+        shareProgressViaAPI: async () => {
+            try {
+                updateUI("🔗 Generating share link...", "default");
+                const progressData = {
+                    timestamp: Date.now(),
+                    version: "1.0",
+                    state: { ...state },
+                    imageData: state.imageData ? {
+                        width: state.imageData.width,
+                        height: state.imageData.height,
+                        pixels: Array.from(state.imageData.pixels),
+                        totalPixels: state.imageData.totalPixels,
+                    } : null,
+                    paintedMap: state.paintedMap ? state.paintedMap.map(row => Array.from(row)) : null,
+                };
+                // The processor object cannot be saved, so we remove it
+                delete progressData.state.imageData?.processor;
+
+                // 2. Send the data to JSONBlob.com
+                const response = await fetch("https://jsonblob.com/api/jsonBlob", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    body: JSON.stringify(progressData),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                // 3. Get the unique URL from the response header
+                const blobUrl = response.headers.get("Location");
+                if (!blobUrl) {
+                    throw new Error("Could not get share URL from API response.");
+                }
+
+                // 4. Show the link to the user
+                prompt("✅ Progress link created! Share this URL:", blobUrl);
+                updateUI("✅ Share link created!", "success");
+                return blobUrl;
+
+            } catch (error) {
+                console.error("Error sharing progress via API:", error);
+                Utils.showAlert("❌ Could not create share link.", "error");
+                updateUI("❌ Error creating link", "error");
+                return null;
+            }
+        },
+
+        loadProgressViaAPI: async () => {
+            try {
+                // 1. Ask the user for the share link
+                const blobUrl = prompt("Enter the progress share URL to load:");
+                if (!blobUrl || !blobUrl.startsWith("https://jsonblob.com/")) {
+                    if(blobUrl) Utils.showAlert("❌ Invalid URL.", "error");
+                    return false;
+                }
+
+                updateUI("🔗 Loading from link...", "default");
+
+                // 2. Fetch the data from the URL
+                const response = await fetch(blobUrl, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const savedData = await response.json();
+
+                // 3. Restore the progress using the script's existing function
+                const success = Utils.restoreProgress(savedData);
+                if (success) {
+                    updateUI("dataLoaded", "success");
+                    Utils.showAlert(Utils.t("dataLoaded"), "success");
+                    updateDataButtons();
+                    updateStats();
+                    Utils.restoreOverlayFromData(); // Attempt to restore the overlay as well
+                }
+                return success;
+
+            } catch (error) {
+                console.error("Error loading progress from API:", error);
+                Utils.showAlert("❌ Could not load progress from link.", "error");
+                updateUI("❌ Error loading link", "error");
+                return false;
+            }
+        },
+
+
+
         // Helper function to restore overlay from loaded data
         restoreOverlayFromData: async () => {
             if (!state.imageLoaded || !state.imageData || !state.startPosition || !state.region) {
@@ -3011,6 +3106,43 @@
             </div>
           </div>
         </div>
+        <div class="wplace-section">
+          <div class="wplace-section-title">💾 Data Management</div>
+          <div class="wplace-controls">
+            <div class="wplace-row">
+              <button id="saveBtn" class="wplace-btn wplace-btn-primary" disabled>
+                <i class="fas fa-save"></i>
+                <span>${Utils.t("saveData")}</span>
+              </button>
+              <button id="loadBtn" class="wplace-btn wplace-btn-primary">
+                <i class="fas fa-folder-open"></i>
+                <span>${Utils.t("loadData")}</span>
+              </button>
+            </div>
+            <div class="wplace-row">
+              <button id="saveToFileBtn" class="wplace-btn wplace-btn-file" disabled>
+                <i class="fas fa-download"></i>
+                <span>${Utils.t("saveToFile")}</span>
+              </button>
+              <button id="loadFromFileBtn" class="wplace-btn wplace-btn-file">
+                <i class="fas fa-upload"></i>
+                <span>${Utils.t("loadFromFile")}</span>
+              </button>
+            </div>
+            
+            <div class="wplace-row">
+                <button id="shareLinkBtn" class="wplace-btn wplace-btn-primary" style="background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);" disabled>
+                    <i class="fas fa-share-alt"></i>
+                    <span>Share Progress</span>
+                </button>
+                <button id="loadLinkBtn" class="wplace-btn wplace-btn-primary" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+                    <i class="fas fa-link"></i>
+                    <span>Load from Link</span>
+                </button>
+            </div>
+        
+          </div>
+        </div>
       </div>
     `
 
@@ -3441,6 +3573,22 @@
         const refreshChargesBtn = statsContainer.querySelector("#refreshChargesBtn")
         const cooldownSlider = container.querySelector("#cooldownSlider");
         const cooldownValue = container.querySelector("#cooldownValue");
+        const shareLinkBtn = container.querySelector("#shareLinkBtn");
+        const loadLinkBtn = container.querySelector("#loadLinkBtn");
+
+        if (shareLinkBtn) {
+            shareLinkBtn.addEventListener("click", Utils.shareProgressViaAPI);
+        }
+        if (loadLinkBtn) {
+            loadLinkBtn.addEventListener("click", Utils.loadProgressViaAPI);
+        }
+
+        updateDataButtons = () => {
+            const hasImageData = state.imageLoaded && state.imageData;
+            saveBtn.disabled = !hasImageData;
+            saveToFileBtn.disabled = !hasImageData;
+            shareLinkBtn.disabled = !hasImageData; // Add this line
+        };
 
         if (!uploadBtn || !selectPosBtn || !startBtn || !stopBtn) {
             console.error("Some UI elements not found:", {
@@ -4360,7 +4508,6 @@
                     }
 
                     if (state.paintedMap[y][x]) continue
-                    if(await checkPixelOwnership(x, y)) continue
 
                     const idx = (y * width + x) * 4
                     const r = pixels[idx]
@@ -4571,42 +4718,6 @@
         }
 
         updateStats()
-    }
-
-    async function checkPixelOwnership(regionX, regionY) {
-        if (!state.imageLoaded || !state.startPosition || !state.region) {
-            return false;
-        }
-
-        const { x: startX, y: startY } = state.startPosition;
-        const absX = startX + regionX * 1000;
-        const absY = startY + regionY * 1000;
-
-        try {
-            const res = await fetch(`https://backend.wplace.live/s0/pixel/${regionX}/${regionY}?x=${absX}&y=${absY}`, {
-                method: "GET",
-                credentials: "include",
-            });
-
-            if (res.status === 403) {
-                console.error("❌ 403 Forbidden. Turnstile token might be invalid or expired.");
-                turnstileToken = null;
-                tokenPromise = new Promise((resolve) => { _resolveToken = resolve });
-                return false;
-            }
-
-            const data = await res.json();
-            if (data?.paintedBy && data.paintedBy.name === "Crown") {
-                console.log(`Pixel at (${absX}, ${absY}) is owned by Crown.`);
-                state.paintedPixels++;
-                return true;
-            }
-            return false;
-        } catch (e) {
-            console.error("Error checking pixel ownership:", e);
-            return false;
-        }
-
     }
 
     async function sendPixelBatch(pixelBatch, regionX, regionY) {
