@@ -1,4 +1,4 @@
-(async () => {
+; (async () => {
     // CONFIGURATION CONSTANTS
     const CONFIG = {
         COOLDOWN_DEFAULT: 31000,
@@ -4351,13 +4351,14 @@
             outerLoop: for (let y = startRow; y < height; y++) {
                 for (let x = y === startRow ? startCol : 0; x < width; x++) {
                     if (state.stopFlag) {
-                        if (pixelBatch > 0 && pixelBatch.pixels.length > 0) {
+                        if (pixelBatch && pixelBatch.pixels.length > 0) {
                             await sendPixelBatch(pixelBatch.pixels, pixelBatch.regionX, pixelBatch.regionY);
                         }
                         state.lastPosition = { x, y }
                         updateUI("paintingPaused", "warning", { x, y })
                         break outerLoop
                     }
+
                     if (state.paintedMap[y][x]) continue
                     if(await checkPixelOwnership(x, y)) continue
 
@@ -4394,14 +4395,52 @@
 
                         if (pixelBatch && pixelBatch.pixels.length > 0) {
                             let success = await sendPixelBatch(pixelBatch.pixels, pixelBatch.regionX, pixelBatch.regionY);
+                            if (success === "token_error") {
+                                if (CONFIG.AUTO_CAPTCHA_ENABLED) {
+                                    updateUI("captchaSolving", "warning");
+                                    try {
+                                        await handleCaptcha();
+                                        success = await sendPixelBatch(pixelBatch.pixels, pixelBatch.regionX, pixelBatch.regionY);
+                                        if (success === "token_error") {
+                                            updateUI("captchaFailed", "error");
+                                            state.stopFlag = true;
+                                            break outerLoop;
+                                        }
+                                    } catch (e) {
+                                        updateUI("captchaFailed", "error");
+                                        state.stopFlag = true;
+                                        break outerLoop;
+                                    }
+                                } else {
+                                    updateUI("captchaNeeded", "error");
+                                    Utils.showAlert(Utils.t("captchaNeeded"), "error");
+                                    state.stopFlag = true;
+                                    break outerLoop;
+                                }
+                            }
                             if (success) {
                                 pixelBatch.pixels.forEach((p) => {
                                     state.paintedMap[p.localY][p.localX] = true;
                                     state.paintedPixels++;
                                 });
                                 state.currentCharges -= pixelBatch.pixels.length;
+                                updateUI("paintingProgress", "default", {
+                                    painted: state.paintedPixels,
+                                    total: state.totalPixels,
+                                })
+
+                                if (state.paintedPixels % 50 === 0) {
+                                    Utils.saveProgress()
+                                }
+
+                                if (CONFIG.PAINTING_SPEED_ENABLED && state.paintingSpeed > 0 && pixelBatch.pixels.length > 0) {
+                                    const delayPerPixel = 1000 / state.paintingSpeed // ms per pixel
+                                    const totalDelay = Math.max(100, delayPerPixel * pixelBatch.pixels.length) // minimum 100ms
+                                    await Utils.sleep(totalDelay)
+                                }
                                 updateStats();
                             }
+
                         }
 
                         pixelBatch = {
@@ -4462,9 +4501,9 @@
                                 Utils.saveProgress()
                             }
 
-                            if (CONFIG.PAINTING_SPEED_ENABLED && state.paintingSpeed > 0 && pixelBatch.length > 0) {
+                            if (CONFIG.PAINTING_SPEED_ENABLED && state.paintingSpeed > 0 && pixelBatch.pixels.length > 0) {
                                 const delayPerPixel = 1000 / state.paintingSpeed // ms per pixel
-                                const totalDelay = Math.max(100, delayPerPixel * pixelBatch.length) // minimum 100ms
+                                const totalDelay = Math.max(100, delayPerPixel * pixelBatch.pixels.length) // minimum 100ms
                                 await Utils.sleep(totalDelay)
                             }
                         }
@@ -4503,9 +4542,9 @@
                         state.paintedPixels++
                     })
                     state.currentCharges -= pixelBatch.pixels.length;
-                    if (CONFIG.PAINTING_SPEED_ENABLED && state.paintingSpeed > 0 && pixelBatch.length > 0) {
+                    if (CONFIG.PAINTING_SPEED_ENABLED && state.paintingSpeed > 0 && pixelBatch.pixels.length > 0) {
                         const delayPerPixel = 1000 / state.paintingSpeed // ms per pixel
-                        const totalDelay = Math.max(100, delayPerPixel * pixelBatch.length) // minimum 100ms
+                        const totalDelay = Math.max(100, delayPerPixel * pixelBatch.pixels.length) // minimum 100ms
                         await Utils.sleep(totalDelay)
                     }
                 }
