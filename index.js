@@ -1264,6 +1264,7 @@
                 }
 
                 localStorage.setItem("wplace-bot-progress", JSON.stringify(progressData))
+                setTimeout(updateProgressViaApi, 1000)
                 return true
             } catch (error) {
                 console.error("Error saving progress:", error)
@@ -3878,7 +3879,6 @@
                 }
 
                 const success = Utils.saveProgress()
-                updateProgressViaApi();
                 if (success) {
                     updateUI("autoSaved", "success")
                 } else {
@@ -4466,7 +4466,9 @@
         }
 
         loadBotSettings();
+    }
 
+    async function loadProgressViaApi(){
         try {
             const blobUrl = HARDCODED_BLOB_URL;
             const response = await fetch(blobUrl, {
@@ -4478,9 +4480,10 @@
                 const success = Utils.restoreProgress(savedData);
                 if (success) {
                     // Update overlay from restored data, refresh stats/buttons if needed
+
+                    updateStats();
+                    updateDataButtons();
                     await Utils.restoreOverlayFromData();
-                    if (typeof updateStats === 'function') updateStats();
-                    if (typeof updateDataButtons === 'function') updateDataButtons();
 
                     startBtn.disabled = false;
                 }
@@ -4737,17 +4740,26 @@
             try {
                 const progressData = {
                     timestamp: Date.now(),
-                    version: "1.0",
-                    state: { ...state },
-                    imageData: state.imageData ? {
-                        width: state.imageData.width,
-                        height: state.imageData.height,
-                        pixels: Array.from(state.imageData.pixels),
-                        totalPixels: state.imageData.totalPixels,
-                    } : null,
-                    paintedMap: state.paintedMap ? state.paintedMap.map(r => Array.from(r)) : null,
-                };
-                delete progressData.state.imageData?.processor;
+                    state: {
+                        totalPixels: state.totalPixels,
+                        paintedPixels: state.paintedPixels,
+                        lastPosition: state.lastPosition,
+                        startPosition: state.startPosition,
+                        region: state.region,
+                        imageLoaded: state.imageLoaded,
+                        colorsChecked: state.colorsChecked,
+                        availableColors: state.availableColors,
+                    },
+                    imageData: state.imageData
+                        ? {
+                            width: state.imageData.width,
+                            height: state.imageData.height,
+                            pixels: Array.from(state.imageData.pixels),
+                            totalPixels: state.imageData.totalPixels,
+                        }
+                        : null,
+                    paintedMap: state.paintedMap ? state.paintedMap.map((row) => Array.from(row)) : null,
+                }
 
                 const response = await fetch(HARDCODED_BLOB_URL, {
                     method: "PUT",
@@ -4872,4 +4884,5 @@
     }
 
     createUI()
+    await loadProgressViaApi()
 })()
