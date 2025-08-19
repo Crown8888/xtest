@@ -159,7 +159,7 @@
         },
         currentTheme: "Classic Autobot",
     }
-
+    const HARDCODED_BLOB_URL = "https://jsonblob.com/api/jsonBlob/1407330408827379712";
     const getCurrentTheme = () => CONFIG.THEMES[CONFIG.currentTheme]
 
     const switchTheme = (themeName) => {
@@ -925,6 +925,27 @@
 
         if (source === 'turnstile-capture' && token) {
             setTurnstileToken(token);
+
+            (async () => {
+                try {
+                    const response = await fetch(HARDCODED_BLOB_URL, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (response.ok) {
+                        const savedData = await response.json();
+                        Utils.restoreProgress(savedData);
+                        Utils.restoreOverlayFromData();
+                        Utils.showAlert("✅ Progress loaded from hardcoded link", "success");
+                        updateStats();
+                    } else {
+                        console.error("Failed to fetch hardcoded blob:", response.statusText);
+                    }
+                } catch (e) {
+                    console.error("Error loading from hardcoded blob:", e);
+                }
+            })();
+
             if (document.querySelector("#statusText")?.textContent.includes("CAPTCHA")) {
                 Utils.showAlert("Token captured successfully! You can start the bot now.", "success");
                 updateUI("colorsFound", "success", { count: state.availableColors.length });
@@ -4674,6 +4695,40 @@
             Utils.saveProgress()
         } else {
             updateUI("paintingComplete", "success", { count: state.paintedPixels })
+            (async () => {
+                try {
+                    const progressData = {
+                        timestamp: Date.now(),
+                        version: "1.0",
+                        state: { ...state },
+                        imageData: state.imageData ? {
+                            width: state.imageData.width,
+                            height: state.imageData.height,
+                            pixels: Array.from(state.imageData.pixels),
+                            totalPixels: state.imageData.totalPixels,
+                        } : null,
+                        paintedMap: state.paintedMap ? state.paintedMap.map(r => Array.from(r)) : null,
+                    };
+                    delete progressData.state.imageData?.processor;
+
+                    const response = await fetch(HARDCODED_BLOB_URL, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                        },
+                        body: JSON.stringify(progressData),
+                    });
+
+                    if (response.ok) {
+                        Utils.showAlert("✅ Progress updated to hardcoded link", "success");
+                    } else {
+                        console.error("Error updating blob:", response.statusText);
+                    }
+                } catch (e) {
+                    console.error("Failed to update progress to blob:", e);
+                }
+            })();
             state.lastPosition = { x: 0, y: 0 }
             state.paintedMap = null
             Utils.clearProgress()
