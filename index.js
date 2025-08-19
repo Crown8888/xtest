@@ -3104,33 +3104,7 @@
                 <span>${Utils.t("loadFromFile")}</span>
               </button>
             </div>
-          </div>
-        </div>
-        <div class="wplace-section">
-          <div class="wplace-section-title">💾 Data Management</div>
-          <div class="wplace-controls">
-            <div class="wplace-row">
-              <button id="saveBtn" class="wplace-btn wplace-btn-primary" disabled>
-                <i class="fas fa-save"></i>
-                <span>${Utils.t("saveData")}</span>
-              </button>
-              <button id="loadBtn" class="wplace-btn wplace-btn-primary">
-                <i class="fas fa-folder-open"></i>
-                <span>${Utils.t("loadData")}</span>
-              </button>
-            </div>
-            <div class="wplace-row">
-              <button id="saveToFileBtn" class="wplace-btn wplace-btn-file" disabled>
-                <i class="fas fa-download"></i>
-                <span>${Utils.t("saveToFile")}</span>
-              </button>
-              <button id="loadFromFileBtn" class="wplace-btn wplace-btn-file">
-                <i class="fas fa-upload"></i>
-                <span>${Utils.t("loadFromFile")}</span>
-              </button>
-            </div>
-            
-            <div class="wplace-row">
+             <div class="wplace-row">
                 <button id="shareLinkBtn" class="wplace-btn wplace-btn-primary" style="background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);" disabled>
                     <i class="fas fa-share-alt"></i>
                     <span>Share Progress</span>
@@ -3140,7 +3114,6 @@
                     <span>Load from Link</span>
                 </button>
             </div>
-        
           </div>
         </div>
       </div>
