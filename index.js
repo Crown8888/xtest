@@ -4481,19 +4481,6 @@
                     await Utils.restoreOverlayFromData();
                     if (typeof updateStats === 'function') updateStats();
                     if (typeof updateDataButtons === 'function') updateDataButtons();
-                    
-                    if (
-                        state.imageLoaded &&
-                        state.startPosition &&
-                        state.region
-                    ) {
-                        const startBtn = document.getElementById('startPaintingBtn');
-                        if (startBtn) {
-                            startBtn.disabled = false;
-                            startBtn.classList.remove('disabled');
-                            startBtn.classList.add('active');
-                        }
-                    }
                 }
             } else {
                 console.error('Failed to fetch progress:', response.statusText);
