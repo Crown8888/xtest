@@ -3556,12 +3556,6 @@
             loadLinkBtn.addEventListener("click", Utils.loadProgressViaAPI);
         }
 
-        updateDataButtons = () => {
-            const hasImageData = state.imageLoaded && state.imageData;
-            saveBtn.disabled = !hasImageData;
-            saveToFileBtn.disabled = !hasImageData;
-            shareLinkBtn.disabled = !hasImageData; // Add this line
-        };
 
         if (!uploadBtn || !selectPosBtn || !startBtn || !stopBtn) {
             console.error("Some UI elements not found:", {
@@ -4039,6 +4033,7 @@
             const hasImageData = state.imageLoaded && state.imageData
             saveBtn.disabled = !hasImageData
             saveToFileBtn.disabled = !hasImageData
+            shareLinkBtn.disabled = !hasImageData;
         }
 
         updateDataButtons()
